@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { requestMock as request } from '../utils/api'
+import { loginApi } from '../utils/api'
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('')
+  const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -10,11 +10,11 @@ export default function Login({ onLogin }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (!username.trim() || !password.trim()) { setError('请输入用户名和密码'); return }
+    if (!studentId.trim() || !password.trim()) { setError('请输入学号和密码'); return }
     setLoading(true)
     try {
-      const result = await request('POST /api/login', { method: 'POST', body: JSON.stringify({ username: username.trim(), password }) })
-      onLogin(result.token, { id: result.id, username: result.username, role: result.role, studentId: result.studentId })
+      const result = await loginApi(studentId.trim(), password)
+      onLogin(result.token, { id: result.id, username: result.username, role: 'student', assistantId: result.assistantId })
     } catch (err) { setError(err.message || '登录失败，请重试') } finally { setLoading(false) }
   }
 
@@ -29,8 +29,8 @@ export default function Login({ onLogin }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="username">用户名</label>
-            <input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="请输入用户名" autoComplete="username" className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow placeholder:text-gray-400" />
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="studentId">学号</label>
+            <input id="studentId" type="text" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="请输入学号" autoComplete="username" className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow placeholder:text-gray-400" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="password">密码</label>
@@ -41,7 +41,7 @@ export default function Login({ onLogin }) {
             {loading ? '登录中...' : '登录'}
           </button>
         </form>
-        <p className="text-xs text-gray-400 text-center mt-6">演示：teacher / 123456 或 student / 123456</p>
+        <p className="text-xs text-gray-400 text-center mt-6">演示：2021001 / 654321</p>
       </div>
     </div>
   )

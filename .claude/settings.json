@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"e:\\\\Project\\\\campus-client\" && ls -la \"e:\\\\Project\\\\\" 2>/dev/null)",
+      "Read(//e/Project\" 2>/dev/**)",
+      "Bash(ls -d \"e:/Project/\"*/ 2>/dev/null | head -20)",
+      "Read(//e/Project/**)"
+    ]
+  }
+}

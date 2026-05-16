@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Table from '../../components/Table'
 import Modal from '../../components/Modal'
-import { requestMock as request } from '../../utils/api'
+import { fetchSchedules, fetchAssistants, createSchedule, updateSchedule, deleteSchedule } from '../../utils/api'
 
 const SHIFT_TYPES = ['早班', '午班', '晚班']
 const IF = { assistantName: '', studentId: '', date: '', shiftType: '早班', startTime: '08:00', endTime: '12:00', location: '' }
@@ -10,7 +10,7 @@ export default function ScheduleManagement() {
   const cm = new Date().toISOString().slice(0, 7)
   const [month, setMonth] = useState(cm); const [schedules, setSchedules] = useState([]); const [assistants, setAssistants] = useState([]); const [modalOpen, setModalOpen] = useState(false); const [editing, setEditing] = useState(null); const [form, setForm] = useState(IF); const [loading, setLoading] = useState(false)
 
-  const fetchData = useCallback(async () => { setLoading(true); const [sl, al] = await Promise.all([request(`GET /api/teacher/schedules?month=${month}`), request('GET /api/teacher/assistants')]); setSchedules(Array.isArray(sl) ? sl : []); setAssistants(Array.isArray(al) ? al : []); setLoading(false) }, [month])
+  const fetchData = useCallback(async () => { setLoading(true); const [sl, al] = await Promise.all([fetchSchedules(month), fetchAssistants()]); setSchedules(Array.isArray(sl) ? sl : []); setAssistants(Array.isArray(al) ? al : []); setLoading(false) }, [month])
   useEffect(() => { fetchData() }, [fetchData])
 
   const activeAssts = assistants.filter(a => a.status === 'active')
@@ -21,8 +21,8 @@ export default function ScheduleManagement() {
   function handleSelectAssistant(e) { const sid = e.target.value; const a = assistants.find(x => x.studentId === sid); setForm(p => ({ ...p, studentId: sid, assistantName: a ? a.name : '' })) }
   function updateField(f) { return e => setForm(p => ({ ...p, [f]: e.target.value })) }
 
-  async function handleSubmit(e) { e.preventDefault(); if (editing) { await request('PUT /api/teacher/schedules/:id', { method: 'PUT', body: JSON.stringify({ id: editing.id, ...form }) }) } else { await request('POST /api/teacher/schedules', { method: 'POST', body: JSON.stringify(form) }) }; setModalOpen(false); await fetchData() }
-  async function handleDelete(row) { if (!confirm(`确认删除 ${row.assistantName} (${row.date} ${row.shiftType}) 的排班？`)) return; await request(`DELETE /api/teacher/schedules/${row.id}`, { method: 'DELETE' }); await fetchData() }
+  async function handleSubmit(e) { e.preventDefault(); if (editing) { await updateSchedule(editing.id, form) } else { await createSchedule(form) }; setModalOpen(false); await fetchData() }
+  async function handleDelete(row) { if (!confirm(`确认删除 ${row.assistantName} (${row.date} ${row.shiftType}) 的排班？`)) return; await deleteSchedule(row.id); await fetchData() }
 
   const cols = [{ key: 'assistantName', title: '学助' }, { key: 'studentId', title: '学号' }, { key: 'date', title: '日期' }, { key: 'shiftType', title: '班次', width: '96px', render: v => <span className={'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ' + (v === '早班' ? 'bg-blue-50 text-blue-700 border-blue-200' : v === '午班' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200')}>{v}</span> }, { key: 'startTime', title: '开始', width: '80px' }, { key: 'endTime', title: '结束', width: '80px' }, { key: 'location', title: '地点' }, { key: 'actions', title: '操作', width: '128px', render: (_, row) => (<div className="flex items-center gap-1"><button onClick={() => openEditModal(row)} className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">编辑</button><button onClick={() => handleDelete(row)} className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors">删除</button></div>) }]
 
