@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { requestMock as request } from '../../utils/api'
+import { fetchClockStatus, clockIn, clockOut } from '../../utils/api'
 
 function fmtTime(d) { return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
 function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }
@@ -7,12 +7,12 @@ function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour
 export default function ClockInOut() {
   const [status, setStatus] = useState(null); const [loading, setLoading] = useState(false); const [actionLoading, setActionLoading] = useState(false); const [now, setNow] = useState(new Date()); const timerRef = useRef(null)
 
-  const fetchStatus = useCallback(async () => { setLoading(true); setStatus(await request('GET /api/student/clock-status')); setLoading(false) }, [])
+  const fetchStatus = useCallback(async () => { setLoading(true); setStatus(await fetchClockStatus()); setLoading(false) }, [])
   useEffect(() => { fetchStatus() }, [fetchStatus])
   useEffect(() => { timerRef.current = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(timerRef.current) }, [])
 
-  async function handleClockIn() { setActionLoading(true); await request('POST /api/student/clock-in', { method: 'POST', body: '{}' }); setActionLoading(false); await fetchStatus() }
-  async function handleClockOut() { setActionLoading(true); await request('POST /api/student/clock-out', { method: 'POST', body: '{}' }); setActionLoading(false); await fetchStatus() }
+  async function handleClockIn() { setActionLoading(true); await clockIn(); setActionLoading(false); await fetchStatus() }
+  async function handleClockOut() { setActionLoading(true); await clockOut(); setActionLoading(false); await fetchStatus() }
 
   if (loading && !status) return <p className="text-xs text-gray-400">加载中...</p>
 

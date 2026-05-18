@@ -26,7 +26,8 @@ export default function App() {
 
   return (
     <>
-      {role === 'teacher' ? <TeacherShell {...shellProps} /> : role === 'student' ? <StudentShell {...shellProps} /> : <Login onLogin={handleLogin} />}
+      {/* 教师端暂停：role === 'teacher' 临时走学生端 */}
+      {role === 'student' || role === 'teacher' ? <StudentShell {...shellProps} /> : <Login onLogin={handleLogin} />}
       <Modal isOpen={expiredModal} onClose={() => {}} title="登录已过期" footer={<button onClick={handleLogout} className="btn-8pt text-white bg-indigo-600 hover:bg-indigo-700">重新登录</button>}>
         <p className="text-sm text-gray-600 text-center">您的登录会话已过期，请重新登录以继续使用。</p>
       </Modal>

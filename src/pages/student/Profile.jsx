@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { requestMock as request } from '../../utils/api'
+import { fetchMyProfile } from '../../utils/api'
 
 export default function Profile() {
   const [profile, setProfile] = useState(null); const [loading, setLoading] = useState(false)
-  const fetchData = useCallback(async () => { setLoading(true); setProfile(await request('GET /api/student/profile')); setLoading(false) }, [])
+  const fetchData = useCallback(async () => { setLoading(true); setProfile(await fetchMyProfile()); setLoading(false) }, [])
   useEffect(() => { fetchData() }, [fetchData])
   if (loading || !profile) return <p className="text-xs text-gray-400">加载中...</p>
 

@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import Table from '../../components/Table'
-import { requestMock as request } from '../../utils/api'
+import { fetchTeacherWorkHours, fetchTeacherWorkHoursDetail } from '../../utils/api'
 
 export default function WorkHoursStats() {
   const cm = new Date().toISOString().slice(0, 7)
   const [month, setMonth] = useState(cm); const [data, setData] = useState([]); const [expandedRow, setExpandedRow] = useState(null); const [dailyDetail, setDailyDetail] = useState(null); const [loading, setLoading] = useState(false)
 
-  const fetchData = useCallback(async () => { if (!month) return; setLoading(true); const list = await request(`GET /api/teacher/work-hours?month=${month}`); setData(Array.isArray(list) ? list : []); setExpandedRow(null); setDailyDetail(null); setLoading(false) }, [month])
+  const fetchData = useCallback(async () => { if (!month) return; setLoading(true); const list = await fetchTeacherWorkHours(month); setData(Array.isArray(list) ? list : []); setExpandedRow(null); setDailyDetail(null); setLoading(false) }, [month])
   useEffect(() => { fetchData() }, [fetchData])
 
   async function toggleDetail(row) {
     if (expandedRow === row.studentId) { setExpandedRow(null); setDailyDetail(null); return }
     setExpandedRow(row.studentId); setDailyDetail(null)
-    const detail = await request(`GET /api/teacher/work-hours/${row.studentId}?month=${month}`); setDailyDetail(detail)
+    const detail = await fetchTeacherWorkHoursDetail(row.studentId, month); setDailyDetail(detail)
   }
 
   const totalHours = data.reduce((s, r) => s + (r.totalHours || 0), 0); const totalDays = data.reduce((s, r) => s + (r.workDays || 0), 0); const avgHours = data.length > 0 ? (totalHours / data.length).toFixed(1) : '0'

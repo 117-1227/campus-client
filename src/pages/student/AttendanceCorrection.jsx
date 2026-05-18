@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import Table from '../../components/Table'
-import { requestMock as request } from '../../utils/api'
+import { fetchMyApprovals, submitApproval } from '../../utils/api'
 
 export default function AttendanceCorrection() {
   const [tab, setTab] = useState('submit'); const [approvals, setApprovals] = useState([]); const [cardDate, setCardDate] = useState(''); const [reason, setReason] = useState(''); const [submitting, setSubmitting] = useState(false); const [loading, setLoading] = useState(false); const [successMsg, setSuccessMsg] = useState('')
 
-  const fetchApprovals = useCallback(async () => { setLoading(true); const data = await request('GET /api/student/approvals'); setApprovals(Array.isArray(data) ? data : []); setLoading(false) }, [])
+  const fetchApprovals = useCallback(async () => { setLoading(true); const data = await fetchMyApprovals(); setApprovals(Array.isArray(data) ? data : []); setLoading(false) }, [])
   useEffect(() => { fetchApprovals() }, [fetchApprovals])
 
-  async function handleSubmit(e) { e.preventDefault(); if (!cardDate || !reason.trim()) { alert('请填写补卡日期和理由'); return }; setSubmitting(true); setSuccessMsg(''); await request('POST /api/student/approvals', { method: 'POST', body: JSON.stringify({ cardDate, reason: reason.trim() }) }); setCardDate(''); setReason(''); setSubmitting(false); setSuccessMsg('补卡申请已提交，请等待审批'); await fetchApprovals() }
+  async function handleSubmit(e) { e.preventDefault(); if (!cardDate || !reason.trim()) { alert('请填写补卡日期和理由'); return }; setSubmitting(true); setSuccessMsg(''); await submitApproval(cardDate, reason.trim()); setCardDate(''); setReason(''); setSubmitting(false); setSuccessMsg('补卡申请已提交，请等待审批'); await fetchApprovals() }
 
   const historyCols = [{ key: 'applyDate', title: '申请日期' }, { key: 'cardDate', title: '补卡日期' }, { key: 'reason', title: '理由' }, { key: 'status', title: '状态', width: '140px', render: (v, row) => (<div>{v === 'pending' && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />待审批</span>}{v === 'approved' && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">已通过</span>}{v === 'rejected' && <div><span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200">已拒绝</span>{row.rejectReason && <p className="text-xs text-gray-400 mt-1">原因：{row.rejectReason}</p>}</div>}</div>) }]
 

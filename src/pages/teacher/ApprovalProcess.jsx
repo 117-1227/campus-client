@@ -1,20 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import Table from '../../components/Table'
 import Modal from '../../components/Modal'
-import { requestMock as request } from '../../utils/api'
+import { fetchApprovals, approveApplication, rejectApplication } from '../../utils/api'
 
 export default function ApprovalProcess() {
   const [tab, setTab] = useState('pending'); const [pendingList, setPendingList] = useState([]); const [historyList, setHistoryList] = useState([]); const [loading, setLoading] = useState(false)
   const [rejectModal, setRejectModal] = useState({ open: false, item: null }); const [rejectReason, setRejectReason] = useState('')
 
-  const fetchData = useCallback(async () => { setLoading(true); const [p, h] = await Promise.all([request('GET /api/teacher/approvals?status=pending'), request('GET /api/teacher/approvals?status=all')]); setPendingList(p); setHistoryList(h.filter(a => a.status !== 'pending')); setLoading(false) }, [])
+  const fetchData = useCallback(async () => { setLoading(true); const [p, h] = await Promise.all([fetchApprovals('pending'), fetchApprovals('all')]); setPendingList(p); setHistoryList(h.filter(a => a.status !== 'pending')); setLoading(false) }, [])
   useEffect(() => { fetchData() }, [fetchData])
 
   const approvedCount = historyList.filter(a => a.status === 'approved').length; const rejectedCount = historyList.filter(a => a.status === 'rejected').length
 
-  async function approve(item) { if (!confirm(`确认通过 ${item.applicant} (${item.studentId}) 的补卡申请？`)) return; await request(`POST /api/teacher/approvals/${item.id}/approve`, { method: 'POST', body: '{}' }); await fetchData() }
+  async function approve(item) { if (!confirm(`确认通过 ${item.applicant} (${item.studentId}) 的补卡申请？`)) return; await approveApplication(item.id); await fetchData() }
   function openRejectModal(item) { setRejectModal({ open: true, item }); setRejectReason('') }
-  async function confirmReject() { const item = rejectModal.item; if (!rejectReason.trim()) { alert('请填写拒绝理由'); return }; await request(`POST /api/teacher/approvals/${item.id}/reject`, { method: 'POST', body: JSON.stringify({ reason: rejectReason.trim() }) }); setRejectModal({ open: false, item: null }); setRejectReason(''); await fetchData() }
+  async function confirmReject() { const item = rejectModal.item; if (!rejectReason.trim()) { alert('请填写拒绝理由'); return }; await rejectApplication(item.id, rejectReason.trim()); setRejectModal({ open: false, item: null }); setRejectReason(''); await fetchData() }
 
   const pendingCols = [{ key: 'applicant', title: '申请人' }, { key: 'studentId', title: '学号' }, { key: 'applyDate', title: '申请日期' }, { key: 'cardDate', title: '补卡日期' }, { key: 'reason', title: '理由' }, { key: 'actions', title: '操作', width: '180px', render: (_, row) => (<div className="flex items-center gap-2"><button onClick={() => approve(row)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>通过</button><button onClick={() => openRejectModal(row)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>拒绝</button></div>) }]
   const historyCols = [{ key: 'applicant', title: '申请人' }, { key: 'studentId', title: '学号' }, { key: 'applyDate', title: '申请日期' }, { key: 'cardDate', title: '补卡日期' }, { key: 'reason', title: '理由' }, { key: 'status', title: '审批结果', width: '160px', render: (v, row) => (<div>{v === 'approved' ? <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>已通过</span> : <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200"><svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>已拒绝</span>}{v === 'rejected' && row.rejectReason && <p className="text-xs text-gray-400 mt-1">原因：{row.rejectReason}</p>}</div>) }]

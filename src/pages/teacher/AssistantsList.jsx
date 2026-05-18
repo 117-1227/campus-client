@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Table from '../../components/Table'
-import { requestMock as request } from '../../utils/api'
+import { fetchAssistants } from '../../utils/api'
 
 function statusLabel(s) { if (s === 'active') return '在岗'; if (s === 'inactive') return '离岗'; return s || '-' }
 
@@ -9,7 +9,7 @@ export default function AssistantsList() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const fetchData = useCallback(async () => { setLoading(true); const raw = await request('GET /api/teacher/assistants'); setAssistants(Array.isArray(raw) ? raw : []); setLoading(false) }, [])
+  const fetchData = useCallback(async () => { setLoading(true); const raw = await fetchAssistants(); setAssistants(Array.isArray(raw) ? raw : []); setLoading(false) }, [])
   useEffect(() => { fetchData() }, [fetchData])
 
   const filtered = assistants.filter(a => { const q = search.toLowerCase(); return (a.studentId || '').toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q) })

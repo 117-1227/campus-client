@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { requestMock as request } from '../../utils/api'
+import { fetchMyWorkHours } from '../../utils/api'
 
 export default function WorkHoursRecord() {
   const cm = new Date().toISOString().slice(0, 7)
   const [month, setMonth] = useState(cm); const [data, setData] = useState(null); const [loading, setLoading] = useState(false)
 
-  const fetchData = useCallback(async () => { if (!month) return; setLoading(true); setData(await request(`GET /api/student/work-hours?month=${month}`)); setLoading(false) }, [month])
+  const fetchData = useCallback(async () => { if (!month) return; setLoading(true); setData(await fetchMyWorkHours(month)); setLoading(false) }, [month])
   useEffect(() => { fetchData() }, [fetchData])
 
   return (

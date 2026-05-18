@@ -1,5 +1,5 @@
-// ---- Real API ----
-async function request(path, options = {}) {
+// ===== Request infrastructure =====
+async function realRequest(path, options = {}) {
   let url = path.replace(/^[A-Z]+ /, '')
   if (options.body && typeof options.body === 'string') {
     try {
@@ -25,7 +25,7 @@ async function request(path, options = {}) {
   return data
 }
 
-// ---- Mock layer ----
+// ===== Mock data =====
 const USE_MOCK = true
 
 let mockAssistants = [
@@ -69,19 +69,20 @@ function mockHandler(fn) {
   )
 }
 
+// ===== Mock routes =====
 const mockRoutes = {
-  'POST /api/login': mockHandler((body) => {
-    if (!body?.username || !body?.password) throw new Error('用户名和密码为必填项')
-    const creds = {
-      teacher: { role: 'teacher', id: 't1' },
-      student: { role: 'student', id: 's1', studentId: '2021001' },
+  'POST /api/user/login': mockHandler((body) => {
+    if (!body?.studentId || !body?.password) throw new Error('学号和密码为必填项')
+    const accounts = {
+      '2021001': { id: 'a1', username: '2021001', password: '654321', assistantId: 'asst-001' },
+      '2023000001': { id: 'a2', username: '2023000001', password: '000001', assistantId: 'asst-002' },
+      '2023000005': { id: 'a3', username: '2023000005', password: '000005', assistantId: 'asst-003' },
     }
-    const c = creds[body.username]
-    if (c && body.password === '123456') return { status: 'success', id: c.id, username: body.username, role: c.role, studentId: c.studentId, token: `mock-jwt-${body.username}` }
-    throw new Error('用户名或密码无效')
+    const acc = accounts[body.studentId]
+    if (acc && body.password === acc.password) return { id: acc.id, username: acc.username, assistantId: acc.assistantId, token: `mock-jwt-${body.studentId}` }
+    throw new Error('学号或密码无效')
   }),
 
-  // Teacher routes
   'GET /api/teacher/assistants': mockHandler(() => [...mockAssistants]),
   'GET /api/teacher/work-hours': mockHandler((q) => mockWorkHours[q?.month || '2026-05'] || []),
   'GET /api/teacher/work-hours/:studentId': mockHandler((sid, q) => (mockWorkHours[q?.month || '2026-05'] || []).find(s => s.studentId === sid) || { studentId: sid, name: '', totalHours: 0, workDays: 0, daily: [] }),
@@ -93,16 +94,16 @@ const mockRoutes = {
   'PUT /api/teacher/schedules/:id': mockHandler((id, body) => { const i = mockSchedules.findIndex(s => s.id === id); if (i !== -1) Object.assign(mockSchedules[i], body); return mockSchedules[i] }),
   'DELETE /api/teacher/schedules/:id': mockHandler((id) => { mockSchedules = mockSchedules.filter(s => s.id !== id); return { success: true } }),
 
-  // Student routes
-  'GET /api/student/profile': mockHandler(() => { const a = mockAssistants.find(x => x.studentId === '2021001'); return a || { studentId: '2021001', name: '', positionLevel: '', status: 'inactive' } }),
-  'GET /api/student/work-hours': mockHandler((q) => (mockWorkHours[q?.month || '2026-05'] || []).find(s => s.studentId === '2021001') || { studentId: '2021001', name: '', totalHours: 0, workDays: 0, daily: [] }),
-  'GET /api/student/approvals': mockHandler(() => mockApprovals.filter(a => a.studentId === '2021001')),
-  'POST /api/student/approvals': mockHandler((body) => { const item = { id: uid(), applicant: '张三', studentId: '2021001', applyDate: new Date().toISOString().slice(0, 10), cardDate: body.cardDate, reason: body.reason, status: 'pending' }; mockApprovals.push(item); return item }),
-  'GET /api/student/clock-status': mockHandler(() => { const s = mockClockState['2021001'] || { clockedIn: false, todayRecords: [] }; if (s.clockedIn && s.todayRecords.length > 0) { const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } return { ...s, date: new Date().toISOString().slice(0, 10) } }),
-  'POST /api/student/clock-in': mockHandler(() => { const now = new Date().toISOString(); mockClockState['2021001'] = { clockedIn: true, lastCheckIn: now, lastCheckOut: null, todayRecords: [...(mockClockState['2021001']?.todayRecords || []), { checkIn: now, checkOut: null, hours: 0 }] }; return { success: true } }),
-  'POST /api/student/clock-out': mockHandler(() => { const now = new Date().toISOString(); const s = mockClockState['2021001']; if (s?.clockedIn) { s.clockedIn = false; s.lastCheckOut = now; const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) { last.checkOut = now; last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } } return { success: true } }),
+  'GET /api/user/profile': mockHandler(() => { const a = mockAssistants.find(x => x.studentId === '2021001'); return a || { studentId: '2021001', name: '', positionLevel: '', status: 'inactive' } }),
+  'GET /api/user/work-hours': mockHandler((q) => (mockWorkHours[q?.month || '2026-05'] || []).find(s => s.studentId === '2021001') || { studentId: '2021001', name: '', totalHours: 0, workDays: 0, daily: [] }),
+  'GET /api/user/approvals': mockHandler(() => mockApprovals.filter(a => a.studentId === '2021001')),
+  'POST /api/user/approvals': mockHandler((body) => { const item = { id: uid(), applicant: '张三', studentId: '2021001', applyDate: new Date().toISOString().slice(0, 10), cardDate: body.cardDate, reason: body.reason, status: 'pending' }; mockApprovals.push(item); return item }),
+  'GET /api/user/clock-status': mockHandler(() => { const s = mockClockState['2021001'] || { clockedIn: false, todayRecords: [] }; if (s.clockedIn && s.todayRecords.length > 0) { const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } return { ...s, date: new Date().toISOString().slice(0, 10) } }),
+  'POST /api/user/clock-in': mockHandler(() => { const now = new Date().toISOString(); mockClockState['2021001'] = { clockedIn: true, lastCheckIn: now, lastCheckOut: null, todayRecords: [...(mockClockState['2021001']?.todayRecords || []), { checkIn: now, checkOut: null, hours: 0 }] }; return { success: true } }),
+  'POST /api/user/clock-out': mockHandler(() => { const now = new Date().toISOString(); const s = mockClockState['2021001']; if (s?.clockedIn) { s.clockedIn = false; s.lastCheckOut = now; const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) { last.checkOut = now; last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } } return { success: true } }),
 }
 
+// ===== Mock dispatcher =====
 function stripQuery(str) { const idx = str.indexOf('?'); return idx === -1 ? str : str.slice(0, idx) }
 function extractQuery(str) { const idx = str.indexOf('?'); if (idx === -1) return undefined; const p = {}; for (const pair of str.slice(idx + 1).split('&')) { const [k, v] = pair.split('='); p[decodeURIComponent(k)] = decodeURIComponent(v || '') } return p }
 
@@ -136,4 +137,100 @@ async function mockRequest(path, options = {}) {
   throw new Error(`Mock route not found: ${method} ${plainPath}`)
 }
 
-export const requestMock = USE_MOCK ? mockRequest : request
+const request = USE_MOCK ? mockRequest : realRequest
+
+// ===== API functions =====
+
+/** 登录 — 使用学号作为账号 */
+export function loginApi(studentId, password) {
+  return request('POST /api/user/login', { method: 'POST', body: JSON.stringify({ studentId, password }) })
+}
+
+// ---- 教师端 ----
+
+/** 获取学助列表 */
+export function fetchAssistants() {
+  return request('GET /api/teacher/assistants')
+}
+
+/** 获取工时统计列表（按月份） */
+export function fetchTeacherWorkHours(month) {
+  return request(`GET /api/teacher/work-hours?month=${month}`)
+}
+
+/** 获取单个学生工时详情 */
+export function fetchTeacherWorkHoursDetail(studentId, month) {
+  return request(`GET /api/teacher/work-hours/${studentId}?month=${month}`)
+}
+
+/** 获取审批列表（status: 'pending' | 'all'） */
+export function fetchApprovals(status = 'pending') {
+  return request(`GET /api/teacher/approvals?status=${status}`)
+}
+
+/** 通过审批 */
+export function approveApplication(id) {
+  return request(`POST /api/teacher/approvals/${id}/approve`, { method: 'POST', body: '{}' })
+}
+
+/** 拒绝审批 */
+export function rejectApplication(id, reason) {
+  return request(`POST /api/teacher/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) })
+}
+
+/** 获取排班列表（按月份） */
+export function fetchSchedules(month) {
+  return request(`GET /api/teacher/schedules?month=${month}`)
+}
+
+/** 添加排班 */
+export function createSchedule(data) {
+  return request('POST /api/teacher/schedules', { method: 'POST', body: JSON.stringify(data) })
+}
+
+/** 编辑排班 */
+export function updateSchedule(id, data) {
+  return request('PUT /api/teacher/schedules/:id', { method: 'PUT', body: JSON.stringify({ id, ...data }) })
+}
+
+/** 删除排班 */
+export function deleteSchedule(id) {
+  return request(`DELETE /api/teacher/schedules/${id}`, { method: 'DELETE' })
+}
+
+// ---- 学生端 ----
+
+/** 获取个人档案 */
+export function fetchMyProfile() {
+  return request('GET /api/user/profile')
+}
+
+/** 获取我的工时记录（按月份） */
+export function fetchMyWorkHours(month) {
+  return request(`GET /api/user/work-hours?month=${month}`)
+}
+
+/** 获取我的补卡申请列表 */
+export function fetchMyApprovals() {
+  return request('GET /api/user/approvals')
+}
+
+/** 提交补卡申请 */
+export function submitApproval(cardDate, reason) {
+  return request('POST /api/user/approvals', { method: 'POST', body: JSON.stringify({ cardDate, reason }) })
+}
+
+/** 获取打卡状态 */
+export function fetchClockStatus() {
+  return request('GET /api/user/clock-status')
+}
+
+/** 签到 */
+export function clockIn() {
+  return request('POST /api/user/clock-in', { method: 'POST', body: '{}' })
+}
+
+/** 签退 */
+export function clockOut() {
+  return request('POST /api/user/clock-out', { method: 'POST', body: '{}' })
+}
