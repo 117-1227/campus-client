@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { fetchAttendanceStatus, punch } from '../../utils/api'
+import { fetchAttendanceStatus, punch, fetchShiftNotice, respondShiftNotice } from '../../utils/api'
 
 function fmtTime(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--' }
 function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }
@@ -54,6 +54,20 @@ export default function ClockInOut() {
   // 首次加载 + 每 60 秒轮询考勤状态
   useEffect(() => { fetchStatus(); const iv = setInterval(fetchStatus, 60000); return () => clearInterval(iv) }, [fetchStatus])
 
+  // 管理员远程通知：每 10 秒轮询
+  const [shiftNotice, setShiftNotice] = useState(null)
+  useEffect(() => {
+    async function poll() {
+      try {
+        const result = await fetchShiftNotice()
+        if (result?.notice) setShiftNotice(result.notice)
+      } catch { /* 无通知或网络错误 */ }
+    }
+    poll()
+    const iv = setInterval(poll, 10000)
+    return () => clearInterval(iv)
+  }, [])
+
   // 有待确认的加班提醒时弹窗（仅当用户未主动关闭过此提醒）
   const dismissedSessionRef = useRef(null)
   useEffect(() => {
@@ -101,6 +115,18 @@ export default function ClockInOut() {
     setActionLoading(false)
     setModal(null)
     await fetchStatus()
+  }
+
+  async function handleShiftResponse(response) {
+    setActionLoading(true)
+    try {
+      await respondShiftNotice(shiftNotice.id, response)
+    } catch (e) {
+      alert(e.message || '响应失败')
+    }
+    setActionLoading(false)
+    setShiftNotice(null)
+    fetchStatus()
   }
 
   if (loading && !status) return (
@@ -257,6 +283,19 @@ export default function ClockInOut() {
         confirmClass="bg-amber-500 hover:bg-amber-600"
         onConfirm={handleConfirm}
         onCancel={closeOvertime}
+        loading={actionLoading}
+      />
+
+      {/* 管理员远程打卡通知 */}
+      <ConfirmModal
+        open={!!shiftNotice}
+        title="管理员通知"
+        message={`管理员请求您进行【${shiftNotice?.actionLabel}】打卡，是否确认？`}
+        detail={shiftNotice?.secondsLeft != null ? `请在 ${shiftNotice.secondsLeft} 秒内响应，超时将自动拒绝` : undefined}
+        confirmLabel="确认打卡"
+        confirmClass="bg-indigo-500 hover:bg-indigo-600"
+        onConfirm={() => handleShiftResponse('confirmed')}
+        onCancel={() => handleShiftResponse('declined')}
         loading={actionLoading}
       />
     </div>

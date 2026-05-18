@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { loginApi } from '../utils/api'
+import { log, error } from '../utils/debug'
 
 export default function Login({ onLogin }) {
   const [studentId, setStudentId] = useState('')
@@ -14,8 +15,9 @@ export default function Login({ onLogin }) {
     setLoading(true)
     try {
       const result = await loginApi(studentId.trim(), password)
+      log('auth', `登录接口返回: ${result.username}, assistantId=${result.assistantId}`)
       onLogin(result.token, { id: result.id, username: result.username, role: 'student', assistantId: result.assistantId })
-    } catch (err) { setError(err.message || '登录失败，请重试') } finally { setLoading(false) }
+    } catch (err) { error('auth', '登录失败', err.message); setError(err.message || '登录失败，请重试') } finally { setLoading(false) }
   }
 
   return (

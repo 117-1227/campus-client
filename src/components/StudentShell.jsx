@@ -3,6 +3,7 @@ import Profile from '../pages/student/Profile'
 import WorkHoursRecord from '../pages/student/WorkHoursRecord'
 import ClockInOut from '../pages/student/ClockInOut'
 import { fetchAssistant } from '../utils/api'
+import { log, warn } from '../utils/debug'
 
 const PAGES = [
   { key: 'clockInOut', label: '打卡签到', icon: (<svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>) },
@@ -18,18 +19,18 @@ export default function StudentShell({ auth, onLogout, remainMs, formatRemain, e
 
   useEffect(() => {
     const id = auth.user?.assistantId
-    console.log('[StudentShell] assistantId:', id, '| user:', auth.user)
     if (id) {
       fetchAssistant(id)
-        .then(a => { console.log('[StudentShell] fetchAssistant 成功:', a); setAssistantName(a.name || '') })
-        .catch(err => console.error('[StudentShell] fetchAssistant 失败:', err.message))
+        .then(a => { log('component', `侧边栏名字获取成功: ${a.name || '(空)'}`); setAssistantName(a.name || '') })
+        .catch(err => warn('component', `侧边栏名字获取失败: ${err.message}`))
     } else {
-      console.warn('[StudentShell] assistantId 为空，跳过获取名字')
+      warn('component', 'assistantId 为空，侧边栏回退显示学号')
     }
   }, [auth.user?.assistantId])
 
   const displayName = assistantName || auth.user?.username || '学生'
   const avatarChar = (assistantName || auth.user?.username || 'S').charAt(0).toUpperCase()
+  log('state', `侧边栏渲染: displayName="${displayName}", assistantName="${assistantName}"`)
   const renderPage = () => { switch (currentPage) { case 'clockInOut': return <ClockInOut />; case 'profile': return <Profile />; case 'workHoursRecord': return <WorkHoursRecord />;default: return <ClockInOut /> } }
 
   return (

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Login from './pages/Login'
 import StudentShell from './components/StudentShell'
 import Modal from './components/Modal'
+import { log, warn } from './utils/debug'
 
 function getStoredAuth() { try { const t = localStorage.getItem('token'); const u = JSON.parse(localStorage.getItem('user') || 'null'); if (t && u) return { token: t, user: u } } catch { } return null }
 function parseJwt(token) { try { const b = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(atob(b)) } catch { return null } }
@@ -9,14 +10,24 @@ function getTokenExp(token) { const p = parseJwt(token); return p?.exp ? p.exp *
 function formatRemain(ms) { if (ms <= 0) return '已过期'; const m = Math.floor(ms / 60000); if (m < 60) return `${m} 分钟`; const h = Math.floor(m / 60); const rm = m % 60; return rm > 0 ? `${h} 小时 ${rm} 分钟` : `${h} 小时` }
 
 export default function App() {
-  const [auth, setAuth] = useState(getStoredAuth)
+  const [auth, setAuth] = useState(() => {
+    const stored = getStoredAuth()
+    log('auth', stored ? `已恢复登录: ${stored.user?.username}` : '未登录')
+    return stored
+  })
   const [expiredModal, setExpiredModal] = useState(false)
   const [remainMs, setRemainMs] = useState(0)
 
-  const handleLogin = useCallback((token, user) => { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); setAuth({ token, user }) }, [])
-  const handleLogout = useCallback(() => { localStorage.removeItem('token'); localStorage.removeItem('user'); setAuth(null); setExpiredModal(false) }, [])
+  const handleLogin = useCallback((token, user) => {
+    log('auth', `登录成功: ${user.username}`, { assistantId: user.assistantId })
+    localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); setAuth({ token, user })
+  }, [])
+  const handleLogout = useCallback(() => {
+    log('auth', '登出')
+    localStorage.removeItem('token'); localStorage.removeItem('user'); setAuth(null); setExpiredModal(false)
+  }, [])
 
-  useEffect(() => { if (!auth?.token) return; function check() { const exp = getTokenExp(auth.token); if (!exp) return; const r = exp - Date.now(); setRemainMs(r > 0 ? r : 0); if (Date.now() >= exp) setExpiredModal(true) } check(); const t = setInterval(check, 30000); return () => clearInterval(t) }, [auth])
+  useEffect(() => { if (!auth?.token) return; function check() { const exp = getTokenExp(auth.token); if (!exp) return; const r = exp - Date.now(); setRemainMs(r > 0 ? r : 0); if (Date.now() >= exp) { warn('auth', 'token 已过期'); setExpiredModal(true) } } check(); const t = setInterval(check, 30000); return () => clearInterval(t) }, [auth])
 
   if (!auth) return <Login onLogin={handleLogin} />
 
