@@ -1,20 +1,27 @@
 import { log, error as logError, warn } from './debug'
+import { getApiBase } from './config'
+
+function resolveUrl(path) {
+  const base = getApiBase()
+  return base ? base + path : path
+}
 
 async function request(path, options = {}) {
   let url = path.replace(/^[A-Z]+ /, '')
+  url = resolveUrl(url)
   const method = options.method || 'GET'
   if (options.body && typeof options.body === 'string') {
     try {
       const bodyObj = JSON.parse(options.body)
       url = url.replace(/:(\w+)/g, (_, key) => bodyObj[key] ?? `:${key}`)
-    } catch { /* not JSON */ }
+    } catch { warn('api', '请求体 JSON 解析失败') }
   }
   const headers = { 'Content-Type': 'application/json' }
   let hasToken = false
   try {
     const token = localStorage.getItem('token')
     if (token) { headers['Authorization'] = `Bearer ${token}`; hasToken = true }
-  } catch { /* */ }
+  } catch { warn('api', '读取 localStorage token 失败') }
   const isFormData = options.body instanceof FormData
   if (isFormData) delete headers['Content-Type']
 
@@ -23,7 +30,7 @@ async function request(path, options = {}) {
   const res = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) } })
   const text = await res.text().catch(() => '')
   let data = {}
-  try { if (text) data = JSON.parse(text) } catch { /* not JSON */ }
+  try { if (text) data = JSON.parse(text) } catch { warn('api', `响应非 JSON: ${text.slice(0, 80)}`) }
 
   if (!res.ok) {
     const detail = data.errors?.length ? ': ' + data.errors.join('; ') : ''
@@ -49,6 +56,10 @@ async function request(path, options = {}) {
 
 export function loginApi(studentId, password) {
   return request('POST /api/user/login', { method: 'POST', body: JSON.stringify({ studentId, password }) })
+}
+
+export function logoutApi() {
+  return request('POST /api/user/logout', { method: 'POST' })
 }
 
 export function fetchUserProfile() {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchAttendanceSummary, fetchAttendanceSessions } from '../../utils/api'
+import { warn } from '../../utils/debug'
 
 function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }
 
@@ -54,7 +55,7 @@ export default function WorkHoursRecord() {
     try {
       const s = await fetchAttendanceSummary(from, to)
       setData(s)
-    } catch { /* ignore */ }
+    } catch (e) { warn('component', `工时汇总查询失败: ${e.message}`) }
     setLoading(false)
   }, [month])
 
@@ -67,7 +68,7 @@ export default function WorkHoursRecord() {
       const result = await fetchAttendanceSessions(params)
       setSessions(result.data || [])
       setSessionsTotal(result.total || 0)
-    } catch { setSessions([]); setSessionsTotal(0) }
+    } catch (e) { warn('component', `班次明细查询失败: ${e.message}`); setSessions([]); setSessionsTotal(0) }
     setSessionsLoading(false)
   }, [month, sessionsPage, sessionsStatus])
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchAttendanceStatus, punch, fetchShiftNotice, respondShiftNotice } from '../../utils/api'
+import { warn } from '../../utils/debug'
 
 function fmtTime(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--' }
 function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }
@@ -47,7 +48,7 @@ export default function ClockInOut() {
     try {
       const s = await fetchAttendanceStatus()
       setStatus(s)
-    } catch { /* ignore */ }
+    } catch (e) { warn('component', `考勤状态查询失败: ${e.message}`) }
     setLoading(false)
   }, [])
 
@@ -61,7 +62,7 @@ export default function ClockInOut() {
       try {
         const result = await fetchShiftNotice()
         if (result?.notice) setShiftNotice(result.notice)
-      } catch { /* 无通知或网络错误 */ }
+      } catch (e) { warn('component', `通知轮询失败: ${e.message}`) }
     }
     poll()
     const iv = setInterval(poll, 10000)

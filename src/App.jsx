@@ -3,6 +3,7 @@ import Login from './pages/Login'
 import StudentShell from './components/StudentShell'
 import Modal from './components/Modal'
 import { log, warn } from './utils/debug'
+import { logoutApi } from './utils/api'
 
 function getStoredAuth() { try { const t = localStorage.getItem('token'); const u = JSON.parse(localStorage.getItem('user') || 'null'); if (t && u) return { token: t, user: u } } catch { } return null }
 function parseJwt(token) { try { const b = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(atob(b)) } catch { return null } }
@@ -24,6 +25,7 @@ export default function App() {
   }, [])
   const handleLogout = useCallback(() => {
     log('auth', '登出')
+    logoutApi().catch(err => warn('auth', `登出接口调用失败: ${err.message}`))
     localStorage.removeItem('token'); localStorage.removeItem('user'); setAuth(null); setExpiredModal(false)
   }, [])
 
