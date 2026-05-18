@@ -41,7 +41,7 @@ export default function Login({ onLogin }) {
             {loading ? '登录中...' : '登录'}
           </button>
         </form>
-        <p className="text-xs text-gray-400 text-center mt-6">演示：2021001 / 654321</p>
+        <p className="text-xs text-gray-400 text-center mt-6">演示：2023000001 / 000001（密码为学号后 6 位）</p>
       </div>
     </div>
   )

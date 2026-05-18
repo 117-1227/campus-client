@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
 import Login from './pages/Login'
-import TeacherShell from './components/TeacherShell'
 import StudentShell from './components/StudentShell'
 import Modal from './components/Modal'
 
@@ -21,13 +20,11 @@ export default function App() {
 
   if (!auth) return <Login onLogin={handleLogin} />
 
-  const role = auth.user?.role
   const shellProps = { auth, onLogout: handleLogout, remainMs, formatRemain, expiredModal }
 
   return (
     <>
-      {/* 教师端暂停：role === 'teacher' 临时走学生端 */}
-      {role === 'student' || role === 'teacher' ? <StudentShell {...shellProps} /> : <Login onLogin={handleLogin} />}
+      <StudentShell {...shellProps} />
       <Modal isOpen={expiredModal} onClose={() => {}} title="登录已过期" footer={<button onClick={handleLogout} className="btn-8pt text-white bg-indigo-600 hover:bg-indigo-700">重新登录</button>}>
         <p className="text-sm text-gray-600 text-center">您的登录会话已过期，请重新登录以继续使用。</p>
       </Modal>

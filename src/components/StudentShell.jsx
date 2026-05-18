@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Profile from '../pages/student/Profile'
 import WorkHoursRecord from '../pages/student/WorkHoursRecord'
 import ClockInOut from '../pages/student/ClockInOut'
+import { fetchAssistant } from '../utils/api'
 
 const PAGES = [
   { key: 'clockInOut', label: '打卡签到', icon: (<svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>) },
@@ -13,6 +14,22 @@ const TITLES = { clockInOut: '打卡签到', profile: '个人档案', workHoursR
 
 export default function StudentShell({ auth, onLogout, remainMs, formatRemain, expiredModal }) {
   const [currentPage, setCurrentPage] = useState('clockInOut')
+  const [assistantName, setAssistantName] = useState('')
+
+  useEffect(() => {
+    const id = auth.user?.assistantId
+    console.log('[StudentShell] assistantId:', id, '| user:', auth.user)
+    if (id) {
+      fetchAssistant(id)
+        .then(a => { console.log('[StudentShell] fetchAssistant 成功:', a); setAssistantName(a.name || '') })
+        .catch(err => console.error('[StudentShell] fetchAssistant 失败:', err.message))
+    } else {
+      console.warn('[StudentShell] assistantId 为空，跳过获取名字')
+    }
+  }, [auth.user?.assistantId])
+
+  const displayName = assistantName || auth.user?.username || '学生'
+  const avatarChar = (assistantName || auth.user?.username || 'S').charAt(0).toUpperCase()
   const renderPage = () => { switch (currentPage) { case 'clockInOut': return <ClockInOut />; case 'profile': return <Profile />; case 'workHoursRecord': return <WorkHoursRecord />;default: return <ClockInOut /> } }
 
   return (
@@ -28,8 +45,11 @@ export default function StudentShell({ auth, onLogout, remainMs, formatRemain, e
         </nav>
         <div className="px-6 py-4 border-t border-white/10 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white shrink-0">{auth.user?.username?.charAt(0).toUpperCase() || 'S'}</div>
-            <div className="min-w-0"><p className="text-sm text-white font-medium truncate">{auth.user?.username || 'student'}</p><p className="text-xs text-indigo-200">学生</p></div>
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold text-white shrink-0">{avatarChar}</div>
+            <div className="min-w-0">
+              <p className="text-sm text-white font-medium truncate">{displayName}（学生）</p>
+              <p className="text-xs text-indigo-200 truncate">{auth.user?.username || ''}</p>
+            </div>
             <button onClick={onLogout} className="ml-auto p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="退出"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg></button>
           </div>
           <div className="flex items-center justify-between"><p className="text-xs text-indigo-200">v1.0</p>{remainMs > 0 && <p className="text-xs text-indigo-200">剩余 {formatRemain(remainMs)}</p>}</div><p className="text-xs text-indigo-200/70 mt-2">© 版权归青穹团队所有</p>
