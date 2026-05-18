@@ -1,234 +1,164 @@
 # 校内学助工作平台（客户端）
 
-基于 React + Vite + Tailwind CSS 的学生助手考勤管理系统前端。
+基于 React 18 + Vite 6 + Tailwind CSS 3 的学生助手考勤管理系统前端。
 
 ## 功能模块
 
 | 模块 | 页面 | 说明 |
 |------|------|------|
-| 登录 | `Login` | 学号 + 密码登录，返回 JWT token |
-| 打卡签到 | `ClockInOut` | 上班签到 / 下班签退，实时计时，加班提醒弹窗 |
-| 工时记录 | `WorkHoursRecord` | 按月汇总工时，每日明细，异常收口提醒 |
-| 个人档案 | `Profile` | 查看学助资料，编辑手机号，修改密码 |
+| 登录 | `Login` | 学号 + 密码登录，返回 JWT token，自动存储会话 |
+| 打卡签到 | `ClockInOut` | 上班签到 / 下班签退、实时计时、加班提醒弹窗、管理员远程通知响应 |
+| 工时记录 | `WorkHoursRecord` | 按月汇总工时、每日明细表、异常收口提醒、班次详情（分页 + 状态筛选） |
+| 个人档案 | `Profile` | 查看学助资料、编辑手机号、修改密码 |
+| 服务器设置 | `SettingsModal` | 远程/本地一键切换，无需改代码或重启 |
 
 ## 环境要求
 
-- **Node.js** >= 18
-- **npm** >= 9
+| 依赖 | 版本 | 说明 |
+|------|------|------|
+| Node.js | >= 18 | JavaScript 运行时 |
+| npm | >= 9 | 包管理器 |
 
-## 新电脑快速部署
+## 快速开始
 
 ```bash
-# 1. 克隆项目后进入目录
-cd campus-client
-
-# 2. 安装依赖
+# 1. 安装依赖
 npm install
 
-# 3. 启动（根据需求选择下方"本地 Mock 运行"或"对接后端运行"）
+# 2. 启动开发服务器
 npm run dev
+
+# 3. 浏览器访问
+# http://localhost:5173
 ```
 
-## 两种运行模式
+## 依赖清单
 
-项目支持两种运行模式，通过 `src/utils/api.js` 第 29 行的开关切换：
+### 运行时依赖
+
+| 包 | 版本 | 用途 |
+|---|------|------|
+| react | ^18.3.1 | UI 组件框架 |
+| react-dom | ^18.3.1 | React DOM 渲染 |
+
+### 开发依赖
+
+| 包 | 版本 | 用途 |
+|---|------|------|
+| vite | ^6.0.5 | 构建工具与开发服务器 |
+| @vitejs/plugin-react | ^4.3.4 | Vite React JSX 编译 |
+| tailwindcss | ^3.4.17 | 原子化 CSS 框架 |
+| postcss | ^8.4.49 | CSS 后处理 |
+| autoprefixer | ^10.4.20 | CSS 浏览器前缀自动补全 |
+
+无其他第三方依赖，API 请求使用浏览器原生 `fetch`，状态管理使用 React 内置 `useState`/`useEffect`。
+
+## 后端连接
+
+### 开发模式（`npm run dev`）
+
+Vite 开发服务器将 `/api` 请求代理到后端。地址支持两种方式配置：
+
+**方式一：页面设置面板（推荐）**
+
+侧边栏齿轮图标 → 服务器设置 → 选择远程/本地 → 填写地址 → 保存立即生效，无需刷新。
+
+**方式二：vite.config.js**
 
 ```js
-const USE_MOCK = true   // Mock 模式：无需后端，数据在浏览器内模拟
-const USE_MOCK = false  // 后端模式：通过 Vite 代理转发到真实后端
+const PROXY_TARGET = 'http://192.168.10.100:3000'  // 修改此行
 ```
 
----
+设置面板填了地址后优先级高于 Vite 代理——请求直连目标，不经过代理。
 
-### 一、本地 Mock 运行（无需后端）
-
-项目内置完整的接口模拟层，无需启动任何后端服务即可完整体验全部功能。
-
-**1. 确认开关**
-
-打开 `src/utils/api.js`，确认第 29 行：
-
-```js
-const USE_MOCK = true
-```
-
-**2. 启动**
+### 生产构建
 
 ```bash
-npm run dev
+npm run build        # 产物在 dist/
+npm run preview      # 本地预览构建产物
 ```
 
-**3. 访问**
-
-浏览器打开 `http://localhost:3001`
-
-**4. Mock 测试账号**
-
-| 学号 | 密码 |
-|------|------|
-| `2021001` | `654321` |
-
-Mock 模式下登录、打卡、工时、档案全部走本地模拟数据，接口延迟 300ms 模拟网络请求。
-
----
-
-### 二、对接后端运行
-
-需要后端服务已启动，前端通过 Vite 开发服务器代理将 `/api` 请求转发到后端。
-
-**1. 确认开关**
-
-打开 `src/utils/api.js`，确认第 29 行：
-
-```js
-const USE_MOCK = false
-```
-
-**2. 配置后端地址**
-
-编辑 `vite.config.js`，修改 `proxy.target` 为你的后端地址：
-
-```js
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3001,
-    proxy: { '/api': { target: 'http://192.168.10.100:3000', changeOrigin: true } },
-  },
-})
-```
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `server.port` | `3001` | 前端开发服务器端口 |
-| `proxy.target` | `http://192.168.10.100:3000` | 后端 API 地址 |
-
-**3. 启动**
-
-```bash
-npm run dev
-```
-
-**4. 登录**
-
-使用后端数据库中的学号和密码登录（默认密码为学号后 6 位）。
-
-**5. 后端依赖**
-
-确保后端以下接口可用：
-
-| 接口 | 用途 |
-|------|------|
-| `POST /api/user/login` | 登录 |
-| `GET /api/assistants/:id` | 学助档案 |
-| `PUT /api/assistants/me` | 更新手机号/密码 |
-| `POST /api/attendance/punch` | 打卡 |
-| `GET /api/attendance/status` | 考勤状态 |
-| `GET /api/attendance/summary` | 工时汇总 |
-
----
-
-## 运行模式对比
-
-| 维度 | Mock 模式 | 后端模式 |
-|------|-----------|----------|
-| 后端服务 | 不需要 | 必须启动 |
-| 数据库 | 不需要 | 必须有 |
-| 数据持久化 | 不持久（刷新丢失） | 持久存储 |
-| 登录账号 | 固定 Mock 账号 | 后端数据库中的真实账号 |
-| 适用场景 | 开发调试、UI 演示、离线开发 | 联调测试、生产部署 |
-| 网络要求 | 无 | 能访问后端地址 |
-
-## 生产构建
-
-两种模式均可构建为静态文件部署到任意 Web 服务器：
-
-```bash
-# 构建
-npm run build
-
-# 产物在 dist/ 目录
-# 部署 dist/ 到 Nginx / Apache / CDN 等
-```
-
-构建产物为纯静态文件，不依赖 Node.js。部署后需在 Web 服务器配置 `/api` 反向代理到后端。
-
-## 技术栈
-
-| 依赖 | 版本 | 用途 |
-|------|------|------|
-| React | ^18.3 | UI 框架 |
-| Vite | ^6.0 | 构建工具 |
-| Tailwind CSS | ^3.4 | 原子化 CSS |
-| PostCSS | ^8.4 | CSS 后处理 |
-| Autoprefixer | ^10.4 | CSS 自动补前缀 |
+`dist/` 为纯静态文件，部署到任意 Web 服务器（Nginx / Apache / CDN）后需配置 `/api` 反向代理到后端，或在页面设置面板中填写完整的后端地址。
 
 ## 项目结构
 
 ```
 campus-client/
-├── index.html                    # 入口 HTML
-├── package.json                  # 项目配置与依赖
-├── vite.config.js                # Vite 配置（端口、代理）
-├── tailwind.config.js            # Tailwind 主题（字号/字重定制）
-├── postcss.config.js             # PostCSS 配置
+├── index.html                         # 入口 HTML
+├── package.json                       # 项目配置与依赖
+├── vite.config.js                     # Vite 配置（端口 5173、代理目标）
+├── tailwind.config.js                 # Tailwind 主题定制
+├── postcss.config.js                  # PostCSS 配置
 └── src/
-    ├── main.jsx                  # 应用入口
-    ├── index.css                 # 全局样式
-    ├── App.jsx                   # 根组件（登录态、路由）
+    ├── main.jsx                       # 应用挂载入口
+    ├── index.css                      # 全局样式（Tailwind 指令）
+    ├── App.jsx                        # 根组件：登录态管理、token 过期检测、登出
     ├── utils/
-    │   └── api.js                # 接口统一管理（Mock / 真实切换）
+    │   ├── api.js                     # 统一 API 请求层（自动拼接 base URL、携带 JWT）
+    │   ├── config.js                  # 运行时服务器配置（预设远程/本地、变更监听）
+    │   └── debug.js                   # 调试日志模块（按标签开关、全局错误捕获）
     ├── components/
-    │   ├── StudentShell.jsx      # 学生端侧边栏
-    │   ├── TeacherShell.jsx      # 教师端侧边栏
-    │   ├── Modal.jsx             # 通用弹窗
-    │   └── Table.jsx             # 通用表格
+    │   ├── StudentShell.jsx           # 学生端侧边栏（导航、用户信息、登出确认）
+    │   ├── SettingsModal.jsx          # 服务器设置弹窗（复用 Modal）
+    │   └── Modal.jsx                  # 通用弹窗组件
     └── pages/
-        ├── Login.jsx             # 登录页
-        ├── student/
-        │   ├── ClockInOut.jsx    # 打卡签到
-        │   ├── WorkHoursRecord.jsx # 工时记录
-        │   └── Profile.jsx       # 个人档案
-        └── teacher/
-            ├── AssistantsList.jsx
-            ├── WorkHoursStats.jsx
-            └── ScheduleManagement.jsx
+        ├── Login.jsx                  # 登录页
+        └── student/
+            ├── ClockInOut.jsx         # 打卡签到（含管理员远程通知）
+            ├── WorkHoursRecord.jsx    # 工时记录（汇总 + 班次明细）
+            └── Profile.jsx            # 个人档案（查看 + 编辑手机号/密码）
 ```
 
 ## 接口清单
 
-所有接口函数集中在 `src/utils/api.js`，自动携带 JWT token。
+所有 API 函数集中在 `src/utils/api.js`，自动携带 `Authorization: Bearer <token>`。
 
-### 用户模块
+### 认证模块
 
-| 函数 | 端点 | 说明 |
-|------|------|------|
-| `loginApi(studentId, password)` | `POST /api/user/login` | 学号登录 |
-| `fetchAssistant(id)` | `GET /api/assistants/:id` | 获取学助档案 |
-| `updateMyProfile(data)` | `PUT /api/assistants/me` | 更新手机号/密码 |
+| 函数 | 端点 | 方法 | 说明 |
+|------|------|------|------|
+| `loginApi(studentId, password)` | `/api/user/login` | POST | 学号登录，返回 `{ id, username, assistantId, token }` |
+| `logoutApi()` | `/api/user/logout` | POST | 登出，使服务端 token 失效 |
+| `fetchUserProfile()` | `/api/user/profile` | GET | 获取当前账户资料 |
+
+### 学助资料
+
+| 函数 | 端点 | 方法 | 说明 |
+|------|------|------|------|
+| `fetchAssistant(id)` | `/api/assistants/:id` | GET | 获取学助详情（姓名、岗位、手机号等） |
+| `updateMyProfile(data)` | `/api/assistants/me` | PUT | 更新手机号或密码（`{ phone }` / `{ currentPassword, newPassword }`） |
 
 ### 考勤模块
 
-| 函数 | 端点 | 说明 |
-|------|------|------|
-| `fetchAttendanceStatus()` | `GET /api/attendance/status` | 考勤状态快照（60s 轮询） |
-| `punch(type, source)` | `POST /api/attendance/punch` | 上班/下班打卡 |
-| `fetchAttendanceSessions(params)` | `GET /api/attendance/sessions` | 历史班次明细 |
-| `fetchAttendanceSummary(from, to)` | `GET /api/attendance/summary` | 工时汇总统计 |
+| 函数 | 端点 | 方法 | 轮询 | 说明 |
+|------|------|------|------|------|
+| `fetchAttendanceStatus()` | `/api/attendance/status` | GET | 60s | 考勤状态快照（openSession、pendingReminder、todaySessions） |
+| `punch(type, source)` | `/api/attendance/punch` | POST | — | 上班 (IN) / 下班 (OUT) 打卡 |
+| `fetchAttendanceSessions(params)` | `/api/attendance/sessions` | GET | — | 历史班次明细（分页、日期筛选、状态过滤） |
+| `fetchAttendanceSummary(from, to)` | `/api/attendance/summary` | GET | — | 工时汇总统计（总时长、班次数、异常数、按日汇总） |
+| `fetchShiftNotice()` | `/api/attendance/shift-notice` | GET | 10s | 轮询管理员远程打卡通知 |
+| `respondShiftNotice(id, response)` | `/api/attendance/shift-notice/respond` | POST | — | 响应通知（confirmed / declined） |
 
-### 教师模块（暂停使用）
+## 调试日志
 
-| 函数 | 端点 |
-|------|------|
-| `fetchAssistants()` | `GET /api/teacher/assistants` |
-| `fetchTeacherWorkHours(month)` | `GET /api/teacher/work-hours` |
-| `fetchSchedules(month)` | `GET /api/teacher/schedules` |
-| `createSchedule(data)` | `POST /api/teacher/schedules` |
-| `updateSchedule(id, data)` | `PUT /api/teacher/schedules/:id` |
-| `deleteSchedule(id)` | `DELETE /api/teacher/schedules/:id` |
+`src/utils/debug.js` 提供统一的调试日志系统，开发模式自动启用，生产构建自动关闭。
+
+模块标签：`api` `auth` `component` `state` `global`
+
+- `[api]` — 所有 HTTP 请求/响应/错误
+- `[auth]` — 登录/登出/token 过期
+- `[component]` — 组件数据加载成功/失败
+- `[global]` — 未捕获异常和未处理 Promise rejection（红色分隔线 + 可复制的单行摘要）
+
+错误发生时控制台输出格式：
+
+```
+━━━━━━ 🐛 复制这行给我 ━━━━━━
+[global] 14:30:22 | 未捕获异常: Cannot read properties of undefined (reading 'name') | ClockInOut.jsx:45:12
+━━━━━━━━━━━━━━━━━━━━━━
+```
+
+选中中间行复制即可定位错误。
 
 ## 版权
 
