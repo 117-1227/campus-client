@@ -1,2 +1,2 @@
 /** @type {import('tailwindcss').Config} */
-export default { content: ['./index.html', './src/**/*.{js,jsx}'], theme: { extend: {} }, plugins: [] }
+export default { content: ['./index.html', './src/**/*.{js,jsx}'], theme: { extend: { fontSize: { xs: ['0.8125rem', { lineHeight: '1.5', fontWeight: '500' }], sm: ['0.9375rem', { lineHeight: '1.6', fontWeight: '500' }], base: ['1.0625rem', { lineHeight: '1.65', fontWeight: '500' }], lg: ['1.1875rem', { lineHeight: '1.5', fontWeight: '600' }], xl: ['1.375rem', { lineHeight: '1.4', fontWeight: '700' }], '2xl': ['1.625rem', { lineHeight: '1.35', fontWeight: '700' }] } } }, plugins: [] }

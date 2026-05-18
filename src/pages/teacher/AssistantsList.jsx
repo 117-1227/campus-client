@@ -18,7 +18,7 @@ export default function AssistantsList() {
 
   const columns = [
     { key: 'studentId', title: '学号' }, { key: 'name', title: '姓名' },
-    { key: 'positionLevel', title: '岗位等级', width: '112px', render: v => v ? <span className={'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ' + (v === '一级岗' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200')}>{v}</span> : <span className="text-xs text-gray-400">-</span> },
+    { key: 'position', title: '岗位等级', width: '112px', render: v => v ? <span className={'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ' + (v === '一级岗' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200')}>{v}</span> : <span className="text-xs text-gray-400">-</span> },
     { key: 'status', title: '状态', width: '96px', render: v => <span className={'inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ' + (v === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-500 border border-gray-200')}><span className={'w-2 h-2 rounded-full ' + (v === 'active' ? 'bg-emerald-500' : 'bg-gray-400')} />{statusLabel(v)}</span> },
     { key: 'phone', title: '手机' },
   ]

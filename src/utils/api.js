@@ -15,10 +15,14 @@ async function realRequest(path, options = {}) {
   const isFormData = options.body instanceof FormData
   if (isFormData) delete headers['Content-Type']
   const res = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) } })
-  const data = await res.json().catch(() => ({}))
+  const text = await res.text().catch(() => '')
+  let data = {}
+  try { if (text) data = JSON.parse(text) } catch { /* not JSON */ }
   if (!res.ok) {
     const detail = data.errors?.length ? ': ' + data.errors.join('; ') : ''
-    throw new Error((data.message || `请求失败 (${res.status})`) + detail)
+    const webMsg = text.startsWith('<!') || text.startsWith('<html') ? `服务器内部错误 (${res.status})` : text.slice(0, 200)
+    const msg = data.message || data.error || webMsg || `请求失败 (${res.status})`
+    throw new Error(msg + detail)
   }
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object' && Array.isArray(data.data)) return data.data
@@ -26,21 +30,14 @@ async function realRequest(path, options = {}) {
 }
 
 // ===== Mock data =====
-const USE_MOCK = true
+const USE_MOCK = false  
 
 let mockAssistants = [
-  { id: '1', studentId: '2021001', name: '张三', positionLevel: '一级岗', status: 'active', isOnDuty: true, phone: '13800138001' },
-  { id: '2', studentId: '2021002', name: '李四', positionLevel: '二级岗', status: 'active', isOnDuty: true, phone: '13800138002' },
-  { id: '3', studentId: '2021003', name: '王五', positionLevel: '一级岗', status: 'inactive', isOnDuty: false, phone: '13800138003' },
-  { id: '4', studentId: '2021004', name: '赵六', positionLevel: '二级岗', status: 'active', isOnDuty: false, phone: '13800138004' },
-  { id: '5', studentId: '2021005', name: '孙七', positionLevel: '一级岗', status: 'active', isOnDuty: true, phone: '13800138005' },
-]
-
-let mockApprovals = [
-  { id: '1', applicant: '张三', studentId: '2021001', applyDate: '2026-05-10', cardDate: '2026-05-08', reason: '忘记打卡', status: 'pending' },
-  { id: '2', applicant: '李四', studentId: '2021002', applyDate: '2026-05-11', cardDate: '2026-05-09', reason: '系统故障', status: 'pending' },
-  { id: '3', applicant: '王五', studentId: '2021003', applyDate: '2026-05-09', cardDate: '2026-05-07', reason: '外出开会', status: 'approved' },
-  { id: '4', applicant: '赵六', studentId: '2021004', applyDate: '2026-05-08', cardDate: '2026-05-06', reason: '忘记带卡', status: 'rejected', rejectReason: '理由不充分' },
+  { id: '1', studentId: '2021001', name: '张三', position: '一级岗', status: 'active', isOnShift: true, phone: '13800138001' },
+  { id: '2', studentId: '2021002', name: '李四', position: '二级岗', status: 'active', isOnShift: true, phone: '13800138002' },
+  { id: '3', studentId: '2021003', name: '王五', position: '一级岗', status: 'inactive', isOnShift: false, phone: '13800138003' },
+  { id: '4', studentId: '2021004', name: '赵六', position: '二级岗', status: 'active', isOnShift: false, phone: '13800138004' },
+  { id: '5', studentId: '2021005', name: '孙七', position: '一级岗', status: 'active', isOnShift: true, phone: '13800138005' },
 ]
 
 const mockWorkHours = {
@@ -58,7 +55,19 @@ let mockSchedules = [
   { id: '2', assistantName: '李四', studentId: '2021002', date: '2026-05-02', shiftType: '午班', startTime: '13:00', endTime: '17:00', location: '实验楼B栋' },
 ]
 
-let mockClockState = { '2021001': { clockedIn: true, lastCheckIn: new Date(Date.now() - 3600000 * 3).toISOString(), lastCheckOut: null, todayRecords: [{ checkIn: new Date(Date.now() - 3600000 * 3).toISOString(), checkOut: null, hours: 3 }] } }
+let mockSessionId = 100
+function mockSid() { return `sess-${String(mockSessionId++)}` }
+
+let mockOpenSession = {
+  id: mockSid(), assistantId: 'asst-001', date: new Date().toISOString().slice(0, 10), shiftType: 'morning', shiftLabel: '上午班',
+  startTime: new Date(Date.now() - 3600000 * 3).toISOString(), endTime: null, durationMinutes: null, status: 'open'
+}
+
+let mockSessions = [
+  { id: mockSid(), assistantId: 'asst-001', date: '2026-05-15', shiftType: 'afternoon', shiftLabel: '下午班', startTime: '2026-05-15T05:10:00.000Z', endTime: '2026-05-15T09:28:00.000Z', durationMinutes: 258, hours: '4.30', status: 'closed', autoCloseReason: null, correctionNote: null, punchInId: 'p-1', punchOutId: 'p-2' },
+  { id: mockSid(), assistantId: 'asst-001', date: '2026-05-14', shiftType: 'morning', shiftLabel: '上午班', startTime: '2026-05-14T01:00:00.000Z', endTime: '2026-05-14T05:15:00.000Z', durationMinutes: 255, hours: '4.25', status: 'closed', autoCloseReason: null, correctionNote: null, punchInId: 'p-3', punchOutId: 'p-4' },
+  { id: mockSid(), assistantId: 'asst-001', date: '2026-05-13', shiftType: 'evening', shiftLabel: '晚班', startTime: '2026-05-13T10:00:00.000Z', endTime: '2026-05-13T13:30:00.000Z', durationMinutes: 210, hours: '3.50', status: 'auto_closed', autoCloseReason: '超时自动收口', correctionNote: null, punchInId: 'p-5', punchOutId: null },
+]
 
 let nextId = 6
 function uid() { return String(nextId++) }
@@ -86,21 +95,84 @@ const mockRoutes = {
   'GET /api/teacher/assistants': mockHandler(() => [...mockAssistants]),
   'GET /api/teacher/work-hours': mockHandler((q) => mockWorkHours[q?.month || '2026-05'] || []),
   'GET /api/teacher/work-hours/:studentId': mockHandler((sid, q) => (mockWorkHours[q?.month || '2026-05'] || []).find(s => s.studentId === sid) || { studentId: sid, name: '', totalHours: 0, workDays: 0, daily: [] }),
-  'GET /api/teacher/approvals': mockHandler((q) => q?.status === 'all' ? [...mockApprovals] : mockApprovals.filter(a => a.status === (q?.status || 'pending'))),
-  'POST /api/teacher/approvals/:id/approve': mockHandler((id) => { const a = mockApprovals.find(x => x.id === id); if (a) a.status = 'approved'; return { success: true } }),
-  'POST /api/teacher/approvals/:id/reject': mockHandler((id, body) => { const a = mockApprovals.find(x => x.id === id); if (a) { a.status = 'rejected'; a.rejectReason = body?.reason || '' } return { success: true } }),
   'GET /api/teacher/schedules': mockHandler((q) => mockSchedules.filter(s => s.date.startsWith(q?.month || '2026-05'))),
   'POST /api/teacher/schedules': mockHandler((body) => { const item = { id: uid(), ...body }; mockSchedules.push(item); return item }),
   'PUT /api/teacher/schedules/:id': mockHandler((id, body) => { const i = mockSchedules.findIndex(s => s.id === id); if (i !== -1) Object.assign(mockSchedules[i], body); return mockSchedules[i] }),
   'DELETE /api/teacher/schedules/:id': mockHandler((id) => { mockSchedules = mockSchedules.filter(s => s.id !== id); return { success: true } }),
 
-  'GET /api/user/profile': mockHandler(() => { const a = mockAssistants.find(x => x.studentId === '2021001'); return a || { studentId: '2021001', name: '', positionLevel: '', status: 'inactive' } }),
-  'GET /api/user/work-hours': mockHandler((q) => (mockWorkHours[q?.month || '2026-05'] || []).find(s => s.studentId === '2021001') || { studentId: '2021001', name: '', totalHours: 0, workDays: 0, daily: [] }),
-  'GET /api/user/approvals': mockHandler(() => mockApprovals.filter(a => a.studentId === '2021001')),
-  'POST /api/user/approvals': mockHandler((body) => { const item = { id: uid(), applicant: '张三', studentId: '2021001', applyDate: new Date().toISOString().slice(0, 10), cardDate: body.cardDate, reason: body.reason, status: 'pending' }; mockApprovals.push(item); return item }),
-  'GET /api/user/clock-status': mockHandler(() => { const s = mockClockState['2021001'] || { clockedIn: false, todayRecords: [] }; if (s.clockedIn && s.todayRecords.length > 0) { const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } return { ...s, date: new Date().toISOString().slice(0, 10) } }),
-  'POST /api/user/clock-in': mockHandler(() => { const now = new Date().toISOString(); mockClockState['2021001'] = { clockedIn: true, lastCheckIn: now, lastCheckOut: null, todayRecords: [...(mockClockState['2021001']?.todayRecords || []), { checkIn: now, checkOut: null, hours: 0 }] }; return { success: true } }),
-  'POST /api/user/clock-out': mockHandler(() => { const now = new Date().toISOString(); const s = mockClockState['2021001']; if (s?.clockedIn) { s.clockedIn = false; s.lastCheckOut = now; const last = s.todayRecords[s.todayRecords.length - 1]; if (last && !last.checkOut) { last.checkOut = now; last.hours = Math.round((Date.now() - new Date(last.checkIn).getTime()) / 3600000 * 10) / 10 } } return { success: true } }),
+  'GET /api/assistants/:id': mockHandler((id) => { const a = mockAssistants.find(x => x.id === id); if (a) return a; throw Object.assign(new Error('学助不存在'), { status: 404 }) }),
+  'PUT /api/assistants/me': mockHandler((body) => {
+    const a = mockAssistants.find(x => x.studentId === '2021001')
+    if (!a) throw new Error('未找到学助档案')
+    if (body?.currentPassword) {
+      if (body.currentPassword !== '654321') throw new Error('当前密码不正确')
+      if (!body.newPassword || body.newPassword.length < 6) throw new Error('新密码至少 6 位')
+      if (body.currentPassword === body.newPassword) throw new Error('新密码不能与旧密码相同')
+    }
+    if (body?.phone !== undefined) a.phone = body.phone
+    return { ...a, message: '更新成功' }
+  }),
+
+  // 考勤模块
+  'GET /api/attendance/status': mockHandler(() => {
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+    const todaySessions = mockSessions.filter(s => s.date === today)
+    if (mockOpenSession) todaySessions.push({ ...mockOpenSession, hours: Math.round((now - new Date(mockOpenSession.startTime).getTime()) / 3600000 * 100) / 100 + '' })
+    let pendingReminder = null
+    if (mockOpenSession) {
+      const restTime = { morning: '12:30', afternoon: '18:00', evening: '22:00', other: '--:--' }[mockOpenSession.shiftType] || '--:--'
+      pendingReminder = { sessionId: mockOpenSession.id, shiftType: mockOpenSession.shiftType, shiftLabel: mockOpenSession.shiftLabel, restTime, startTime: mockOpenSession.startTime, message: `您的${mockOpenSession.shiftLabel}已到休息时间（${restTime}），请确认：是否仍在加班？` }
+    }
+    return { openSession: mockOpenSession || null, pendingReminder, todaySessions, serverTime: now.toISOString() }
+  }),
+
+  'POST /api/attendance/punch': mockHandler((body) => {
+    const now = new Date()
+    const hour = now.getHours() + now.getMinutes() / 60
+    const shiftType = hour < 12.5 ? 'morning' : hour < 18 ? 'afternoon' : hour < 22 ? 'evening' : 'other'
+    const shiftLabel = { morning: '上午班', afternoon: '下午班', evening: '晚班', other: '其他' }[shiftType]
+    const restTime = { morning: '12:30', afternoon: '18:00', evening: '22:00', other: '--:--' }[shiftType]
+    if (body?.type === 'IN') {
+      if (mockOpenSession) { const err = new Error('已有进行中的班次'); err.status = 409; throw err }
+      mockOpenSession = { id: mockSid(), assistantId: 'asst-001', date: now.toISOString().slice(0, 10), shiftType, shiftLabel, startTime: now.toISOString(), endTime: null, durationMinutes: null, status: 'open' }
+      return { message: `上班打卡成功（${shiftLabel}）`, sessionId: mockOpenSession.id, shiftType, shiftLabel, startTime: mockOpenSession.startTime, expectedEndAt: restTime, status: 'open' }
+    }
+    if (body?.type === 'OUT') {
+      if (!mockOpenSession) { const err = new Error('当前没有进行中的班次'); err.status = 409; throw err }
+      const dur = Math.round((now - new Date(mockOpenSession.startTime).getTime()) / 60000)
+      mockOpenSession.endTime = now.toISOString(); mockOpenSession.durationMinutes = dur; mockOpenSession.hours = (dur / 60).toFixed(2); mockOpenSession.status = 'closed'; mockOpenSession.punchOutId = 'p-out-' + Date.now()
+      const sess = { ...mockOpenSession }; mockSessions.unshift(sess); mockOpenSession = null
+      return { message: '下班打卡成功', sessionId: sess.id, shiftLabel: sess.shiftLabel, startTime: sess.startTime, endTime: sess.endTime, durationMinutes: sess.durationMinutes, hours: sess.hours, status: 'closed' }
+    }
+    throw new Error('type 参数缺失或不合法')
+  }),
+
+  'GET /api/attendance/sessions': mockHandler((q) => {
+    let list = [...mockSessions]
+    if (q?.from) list = list.filter(s => s.date >= q.from)
+    if (q?.to) list = list.filter(s => s.date <= q.to)
+    if (q?.status) list = list.filter(s => s.status === q.status)
+    const page = +q?.page || 1; const limit = +q?.limit || 20; const start = (page - 1) * limit
+    return { data: list.slice(start, start + limit), total: list.length, page, limit }
+  }),
+
+  'GET /api/attendance/summary': mockHandler((q) => {
+    const finished = mockSessions.filter(s => s.status === 'closed' || s.status === 'auto_closed' || s.status === 'corrected')
+    let list = finished
+    if (q?.from) list = list.filter(s => s.date >= q.from)
+    if (q?.to) list = list.filter(s => s.date <= q.to)
+    const totalMinutes = list.reduce((s, r) => s + (r.durationMinutes || 0), 0)
+    const autoClosedCount = list.filter(s => s.status === 'auto_closed').length
+    const byDate = []
+    const dates = [...new Set(list.map(s => s.date))].sort()
+    for (const d of dates) {
+      const dayItems = list.filter(s => s.date === d)
+      const dayMins = dayItems.reduce((s, r) => s + (r.durationMinutes || 0), 0)
+      byDate.push({ date: d, minutes: dayMins, hours: (dayMins / 60).toFixed(2), sessionCount: dayItems.length, hasAnomalies: dayItems.some(s => s.status === 'auto_closed') })
+    }
+    return { totalMinutes, totalHours: (totalMinutes / 60).toFixed(2), sessionCount: list.length, autoClosedCount, hasUnconfirmed: autoClosedCount > 0, unconfirmedTip: autoClosedCount > 0 ? `您有 ${autoClosedCount} 条系统自动收口记录，请联系管理员核实工时` : null, byDate }
+  }),
 }
 
 // ===== Mock dispatcher =====
@@ -163,21 +235,6 @@ export function fetchTeacherWorkHoursDetail(studentId, month) {
   return request(`GET /api/teacher/work-hours/${studentId}?month=${month}`)
 }
 
-/** 获取审批列表（status: 'pending' | 'all'） */
-export function fetchApprovals(status = 'pending') {
-  return request(`GET /api/teacher/approvals?status=${status}`)
-}
-
-/** 通过审批 */
-export function approveApplication(id) {
-  return request(`POST /api/teacher/approvals/${id}/approve`, { method: 'POST', body: '{}' })
-}
-
-/** 拒绝审批 */
-export function rejectApplication(id, reason) {
-  return request(`POST /api/teacher/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) })
-}
-
 /** 获取排班列表（按月份） */
 export function fetchSchedules(month) {
   return request(`GET /api/teacher/schedules?month=${month}`)
@@ -200,37 +257,37 @@ export function deleteSchedule(id) {
 
 // ---- 学生端 ----
 
-/** 获取个人档案 */
-export function fetchMyProfile() {
-  return request('GET /api/user/profile')
+/** 获取学助档案 */
+export function fetchAssistant(id) {
+  return request(`GET /api/assistants/${id}`)
 }
 
-/** 获取我的工时记录（按月份） */
-export function fetchMyWorkHours(month) {
-  return request(`GET /api/user/work-hours?month=${month}`)
+/** 更新个人资料（手机号 / 密码） */
+export function updateMyProfile(data) {
+  return request('PUT /api/assistants/me', { method: 'PUT', body: JSON.stringify(data) })
 }
 
-/** 获取我的补卡申请列表 */
-export function fetchMyApprovals() {
-  return request('GET /api/user/approvals')
+// ---- 考勤模块 ----
+
+/** 获取考勤状态快照（含 openSession / pendingReminder / todaySessions） */
+export function fetchAttendanceStatus() {
+  return request('GET /api/attendance/status')
 }
 
-/** 提交补卡申请 */
-export function submitApproval(cardDate, reason) {
-  return request('POST /api/user/approvals', { method: 'POST', body: JSON.stringify({ cardDate, reason }) })
+/** 打卡（上班或下班） */
+export function punch(type, source = 'web') {
+  return request('POST /api/attendance/punch', { method: 'POST', body: JSON.stringify({ type, source }) })
 }
 
-/** 获取打卡状态 */
-export function fetchClockStatus() {
-  return request('GET /api/user/clock-status')
+/** 查询历史班次明细（分页） */
+export function fetchAttendanceSessions(params = {}) {
+  const qs = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')
+  return request(`GET /api/attendance/sessions${qs ? '?' + qs : ''}`)
 }
 
-/** 签到 */
-export function clockIn() {
-  return request('POST /api/user/clock-in', { method: 'POST', body: '{}' })
-}
-
-/** 签退 */
-export function clockOut() {
-  return request('POST /api/user/clock-out', { method: 'POST', body: '{}' })
+/** 查询工时汇总统计 */
+export function fetchAttendanceSummary(from, to) {
+  const qs = [from && `from=${from}`, to && `to=${to}`].filter(Boolean).join('&')
+  return request(`GET /api/attendance/summary${qs ? '?' + qs : ''}`)
 }
