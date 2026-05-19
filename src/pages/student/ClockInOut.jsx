@@ -143,7 +143,7 @@ export default function ClockInOut() {
         <div className="mt-4 inline-flex items-center gap-2">
           <span className={'w-2.5 h-2.5 rounded-full ' + (clockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300')} />
           <span className={'text-sm font-medium ' + (clockedIn ? 'text-emerald-600' : 'text-gray-500')}>
-            {clockedIn ? `已上班 · ${openSession.shiftLabel}` : '未上班'}
+            {clockedIn ? (openSession.shiftLabel ? `已上班 · ${openSession.shiftLabel}` : '已上班') : '未上班'}
           </span>
         </div>
       </div>

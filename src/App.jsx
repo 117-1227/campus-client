@@ -29,6 +29,12 @@ export default function App() {
     localStorage.removeItem('token'); localStorage.removeItem('user'); setAuth(null); setExpiredModal(false)
   }, [])
 
+  useEffect(() => {
+    function onAuthExpired() { log('auth', '服务端 401，强制登出'); setAuth(null) }
+    window.addEventListener('auth:expired', onAuthExpired)
+    return () => window.removeEventListener('auth:expired', onAuthExpired)
+  }, [])
+
   useEffect(() => { if (!auth?.token) return; function check() { const exp = getTokenExp(auth.token); if (!exp) return; const r = exp - Date.now(); setRemainMs(r > 0 ? r : 0); if (Date.now() >= exp) { warn('auth', 'token 已过期'); setExpiredModal(true) } } check(); const t = setInterval(check, 30000); return () => clearInterval(t) }, [auth])
 
   if (!auth) return <Login onLogin={handleLogin} />

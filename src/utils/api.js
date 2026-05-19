@@ -33,6 +33,10 @@ async function request(path, options = {}) {
   try { if (text) data = JSON.parse(text) } catch { warn('api', `响应非 JSON: ${text.slice(0, 80)}`) }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      try { localStorage.removeItem('token'); localStorage.removeItem('user') } catch {}
+      window.dispatchEvent(new CustomEvent('auth:expired'))
+    }
     const detail = data.errors?.length ? ': ' + data.errors.join('; ') : ''
     const webMsg = text.startsWith('<!') || text.startsWith('<html') ? `服务器内部错误 (${res.status})` : text.slice(0, 200)
     const msg = data.message || data.error || webMsg || `请求失败 (${res.status})`
