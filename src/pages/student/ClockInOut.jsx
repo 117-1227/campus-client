@@ -1,33 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { fetchAttendanceStatus, punch, fetchShiftNotice, respondShiftNotice } from '../../utils/api'
+import { fetchAttendanceStatus, punch } from '../../utils/api'
+import ConfirmModal from '../../components/ConfirmModal'
 import { warn } from '../../utils/debug'
 
 function fmtTime(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--' }
 function fmtShort(d) { return d ? new Date(d).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--:--' }
 function fmtDuration(ms) { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); const s = Math.floor((ms % 60000) / 1000); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` }
-
-function ConfirmModal({ open, title, message, detail, confirmLabel, confirmClass, onConfirm, onCancel, loading }) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-sm mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-6 pt-6 pb-4 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 mb-4">
-            <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
-          <p className="text-sm text-gray-500">{message}</p>
-          {detail && <p className="text-xs text-gray-400 mt-2">{detail}</p>}
-        </div>
-        <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onCancel} disabled={loading} className="flex-1 h-11 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-colors">取消</button>
-          <button onClick={onConfirm} disabled={loading} className={`flex-1 h-11 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-colors ${confirmClass || 'bg-indigo-500 hover:bg-indigo-600'}`}>{loading ? '处理中...' : confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function ClockInOut() {
   const [status, setStatus] = useState(null)
@@ -42,6 +20,7 @@ export default function ClockInOut() {
   const pendingReminder = status?.pendingReminder
   const todaySessions = status?.todaySessions || pendingReminder?.todaySessions || []
   const clockedIn = !!openSession
+  const lastCompleted = todaySessions.filter(s => s.status === 'closed' || s.status === 'auto_closed').slice(-1)[0]
 
   const fetchStatus = useCallback(async () => {
     setLoading(true)
@@ -54,20 +33,6 @@ export default function ClockInOut() {
 
   // 首次加载 + 每 60 秒轮询考勤状态
   useEffect(() => { fetchStatus(); const iv = setInterval(fetchStatus, 60000); return () => clearInterval(iv) }, [fetchStatus])
-
-  // 管理员远程通知：每 10 秒轮询
-  const [shiftNotice, setShiftNotice] = useState(null)
-  useEffect(() => {
-    async function poll() {
-      try {
-        const result = await fetchShiftNotice()
-        if (result?.notice) setShiftNotice(result.notice)
-      } catch (e) { warn('component', `通知轮询失败: ${e.message}`) }
-    }
-    poll()
-    const iv = setInterval(poll, 10000)
-    return () => clearInterval(iv)
-  }, [])
 
   // 有待确认的加班提醒时弹窗（仅当用户未主动关闭过此提醒）
   const dismissedSessionRef = useRef(null)
@@ -118,18 +83,6 @@ export default function ClockInOut() {
     await fetchStatus()
   }
 
-  async function handleShiftResponse(response) {
-    setActionLoading(true)
-    try {
-      await respondShiftNotice(shiftNotice.id, response)
-    } catch (e) {
-      alert(e.message || '响应失败')
-    }
-    setActionLoading(false)
-    setShiftNotice(null)
-    fetchStatus()
-  }
-
   if (loading && !status) return (
     <div className="flex items-center justify-center py-20"><p className="text-sm text-gray-400">加载中...</p></div>
   )
@@ -165,6 +118,29 @@ export default function ClockInOut() {
                   <p className="text-xs text-gray-400 mb-0.5">预计下班</p>
                   <p className="text-sm font-semibold text-gray-800 tabular-nums">{openSession.expectedEndAt || '--:--'}</p>
                 </div>
+              </div>
+            </>
+          ) : lastCompleted ? (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2 h-2 rounded-full bg-gray-300" />
+                <p className="text-xs text-gray-400">上次打卡</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-400 mb-0.5">签到</p>
+                  <p className="text-sm font-semibold text-gray-800 tabular-nums">{fmtShort(lastCompleted.startTime)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-400 mb-0.5">签退</p>
+                  <p className="text-sm font-semibold text-gray-800 tabular-nums">{fmtShort(lastCompleted.endTime)}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-3 text-xs text-gray-500">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 font-medium">{lastCompleted.shiftLabel}</span>
+                <span>{lastCompleted.hours ? `${lastCompleted.hours}h` : '-'}</span>
+                <span className="w-1 h-1 rounded-full bg-gray-300" />
+                <span className="text-gray-400">已结束</span>
               </div>
             </>
           ) : (
@@ -287,18 +263,6 @@ export default function ClockInOut() {
         loading={actionLoading}
       />
 
-      {/* 管理员远程打卡通知 */}
-      <ConfirmModal
-        open={!!shiftNotice}
-        title="管理员通知"
-        message={`管理员请求您进行【${shiftNotice?.actionLabel}】打卡，是否确认？`}
-        detail={shiftNotice?.secondsLeft != null ? `请在 ${shiftNotice.secondsLeft} 秒内响应，超时将自动拒绝` : undefined}
-        confirmLabel="确认打卡"
-        confirmClass="bg-indigo-500 hover:bg-indigo-600"
-        onConfirm={() => handleShiftResponse('confirmed')}
-        onCancel={() => handleShiftResponse('declined')}
-        loading={actionLoading}
-      />
     </div>
   )
 }
